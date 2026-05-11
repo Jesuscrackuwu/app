@@ -154,16 +154,14 @@ class NuevaEPSBot:
             
         config.add_argument(f"--load-extension={ext_path}")
         
-        # Argumentos para imitar interfaz y comportamiento humano
+        # Argumentos compatibles con nodriver
         for arg in [
-            "--disable-blink-features=AutomationControlled",
             "--start-maximized",
             "--window-size=1366,768",
             "--disable-dev-shm-usage",
-            "--disable-gpu", # En VPS sin GPU real, esto ayuda a Xvfb
+            "--disable-gpu",
             "--no-first-run",
             "--no-default-browser-check",
-            "--lang=es-ES",
         ]:
             config.add_argument(arg)
             
