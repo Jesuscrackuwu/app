@@ -66,9 +66,16 @@ class NuevaEPSBot:
         self._proxy_ext_dir = BASE_DIR / "proxy_auth_extension"
 
     async def ejecutar(self, tipo_doc: str, num_doc: str) -> dict:
-        # Mezclamos los proxies para no usar siempre el mismo al inicio
+        # Mezclamos los proxies
         random.shuffle(PROXIES)
         
+        # Verificar si hay Xvfb corriendo
+        if not os.environ.get("DISPLAY"):
+            print("\n⚠️  ADVERTENCIA: No se detectó Xvfb (DISPLAY).")
+            print("   Para imitar una interfaz real, ejecuta así:")
+            print("   Xvfb :99 -screen 0 1366x768x24 &")
+            print("   DISPLAY=:99 python3 login_nuevaeps.py\n")
+
         for i, proxy in enumerate(PROXIES):
             self._current_proxy = proxy
             print(f"\n🔄 Intento {i+1}/{len(PROXIES)} usando Proxy: {proxy['host']}")
@@ -132,13 +139,36 @@ class NuevaEPSBot:
     async def _iniciar_navegador(self):
         ext_path = self._crear_extension_proxy()
         config = uc.Config()
-        config.headless = self.headless
+        
+        # Si detectamos Xvfb, desactivamos el modo headless para que Chrome 
+        # crea que tiene una pantalla real y renderice todo.
+        if os.environ.get("DISPLAY"):
+            print(f"   📺 Pantalla virtual detectada ({os.environ.get('DISPLAY')}). Desactivando Headless.")
+            config.headless = False
+        else:
+            config.headless = self.headless
+            
         config.sandbox = False
-        if Path(CHROME_PATH).exists(): config.browser_executable_path = CHROME_PATH
+        if Path(CHROME_PATH).exists(): 
+            config.browser_executable_path = CHROME_PATH
+            
         config.add_argument(f"--load-extension={ext_path}")
-        # Desactivar detección de automatización básica
-        config.add_argument("--disable-blink-features=AutomationControlled")
+        
+        # Argumentos para imitar interfaz y comportamiento humano
+        for arg in [
+            "--disable-blink-features=AutomationControlled",
+            "--start-maximized",
+            "--window-size=1366,768",
+            "--disable-dev-shm-usage",
+            "--disable-gpu", # En VPS sin GPU real, esto ayuda a Xvfb
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--lang=es-ES",
+        ]:
+            config.add_argument(arg)
+            
         self._browser = await uc.start(config)
+        print("   ✅ Navegador con interfaz virtual iniciado.")
 
     async def _verificar_sesion_activa(self) -> bool:
         print(f"   🌐 Navegando al portal...")
